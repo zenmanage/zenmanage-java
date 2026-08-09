@@ -14,7 +14,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - CI and release workflows for public publishing
 
 ### Changed
-- N/A
+- Renamed `X-API-Key`, `X-ZENMANAGE-CONTEXT`, and `X-DEFAULT-VALUE` headers to `X-ZEN-API-KEY`, `X-ZEN-CONTEXT`, and `X-ZEN-DEFAULT-VALUE` for consistency with the JavaScript/PHP SDKs
 
 ### Deprecated
 - N/A
