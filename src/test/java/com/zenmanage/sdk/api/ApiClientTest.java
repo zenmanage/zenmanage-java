@@ -49,7 +49,7 @@ class ApiClientTest {
 
         Map<String, List<String>> headers = capturedHeaders.poll(5, TimeUnit.SECONDS);
         assertNotNull(headers);
-        assertEquals("{\"new-ui\":true}", headers.get("X-Default-Value").get(0));
+        assertEquals("{\"new-ui\":true}", headers.get("X-Zen-Default-Value").get(0));
     }
 
     @Test
@@ -60,7 +60,7 @@ class ApiClientTest {
 
         Map<String, List<String>> headers = capturedHeaders.poll(5, TimeUnit.SECONDS);
         assertNotNull(headers);
-        assertEquals("{\"num-flag\":42}", headers.get("X-Default-Value").get(0));
+        assertEquals("{\"num-flag\":42}", headers.get("X-Zen-Default-Value").get(0));
     }
 
     @Test
@@ -71,7 +71,7 @@ class ApiClientTest {
 
         Map<String, List<String>> headers = capturedHeaders.poll(5, TimeUnit.SECONDS);
         assertNotNull(headers);
-        assertFalse(headers.containsKey("X-Default-Value"));
+        assertFalse(headers.containsKey("X-Zen-Default-Value"));
     }
 
     @Test
@@ -82,8 +82,8 @@ class ApiClientTest {
 
         Map<String, List<String>> headers = capturedHeaders.poll(5, TimeUnit.SECONDS);
         assertNotNull(headers);
-        assertEquals("{\"num-flag\":42}", headers.get("X-Default-Value").get(0));
-        assertNotNull(headers.get("X-Zenmanage-Context"));
+        assertEquals("{\"num-flag\":42}", headers.get("X-Zen-Default-Value").get(0));
+        assertNotNull(headers.get("X-Zen-Context"));
     }
 
     @Test

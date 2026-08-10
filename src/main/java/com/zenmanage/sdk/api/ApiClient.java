@@ -65,7 +65,7 @@ public class ApiClient {
         this.baseHeaders = new HashMap<>();
         baseHeaders.put("Accept", "application/json");
         baseHeaders.put("Content-Type", "application/json");
-        baseHeaders.put("X-API-Key", environmentToken);
+        baseHeaders.put("X-ZEN-API-KEY", environmentToken);
         baseHeaders.put("X-ZEN-CLIENT-AGENT", clientAgent + "/" + sdkVersion);
     }
 
@@ -130,7 +130,7 @@ public class ApiClient {
 
         if (context != null && shouldSendContext(context)) {
             try {
-                requestBuilder.header("X-ZENMANAGE-CONTEXT", objectMapper.writeValueAsString(context.toMap()));
+                requestBuilder.header("X-ZEN-CONTEXT", objectMapper.writeValueAsString(context.toMap()));
             } catch (JsonProcessingException exception) {
                 logger.debug("Failed to encode usage context");
             }
@@ -138,7 +138,7 @@ public class ApiClient {
 
         if (defaultValue != null) {
             try {
-                requestBuilder.header("X-DEFAULT-VALUE", objectMapper.writeValueAsString(Map.of(key, defaultValue)));
+                requestBuilder.header("X-ZEN-DEFAULT-VALUE", objectMapper.writeValueAsString(Map.of(key, defaultValue)));
             } catch (JsonProcessingException exception) {
                 logger.debug("Failed to encode usage default value");
             }
