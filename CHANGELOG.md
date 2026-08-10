@@ -24,6 +24,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Fixed
 - Filesystem cache serialization stability for tests
+- `FlagManager.single()` now reports the effective default value (inline parameter, falling back to a `DefaultsCollection` entry) on every usage report, including when the flag is found and evaluated normally, not just on fallback paths
 
 ### Security
 - N/A

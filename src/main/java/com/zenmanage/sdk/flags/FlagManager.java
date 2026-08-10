@@ -81,7 +81,7 @@ public final class FlagManager {
 
         for (Flag flag : sharedState.flags) {
             if (flag.getKey().equals(key)) {
-                reportUsage(key, usageContext());
+                reportUsage(key, usageContext(), resolveEffectiveDefault(key, defaultValue));
                 return evaluateFlag(flag);
             }
         }
@@ -119,6 +119,14 @@ public final class FlagManager {
     public void refreshRules() {
         logger.info("Refreshing rules from API");
         loadRulesFromApi();
+    }
+
+    private Object resolveEffectiveDefault(String key, Object defaultValue) {
+        if (defaultValue != null) {
+            return defaultValue;
+        }
+
+        return defaults.has(key) ? defaults.get(key) : null;
     }
 
     private Context usageContext() {
