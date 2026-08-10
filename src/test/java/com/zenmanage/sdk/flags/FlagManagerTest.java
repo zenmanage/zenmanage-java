@@ -113,6 +113,39 @@ class FlagManagerTest {
         assertNull(stub.lastDefaultValue);
     }
 
+    @Test
+    void reportsUsageWithInlineDefaultValueWhenFlagFound() {
+        FlagData data = baseBooleanFlagData("feature", true);
+        RulesResponse response = new RulesResponse();
+        response.setVersion("1");
+        response.setFlags(List.of(data));
+
+        StubApiClient stub = new StubApiClient(response);
+        FlagManager manager = new FlagManager(stub, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        manager.single("feature", false);
+
+        assertEquals("feature", stub.lastReportedKey);
+        assertEquals(false, stub.lastDefaultValue);
+    }
+
+    @Test
+    void reportsUsageWithDefaultsCollectionValueWhenFlagFound() {
+        FlagData data = baseBooleanFlagData("feature", true);
+        RulesResponse response = new RulesResponse();
+        response.setVersion("1");
+        response.setFlags(List.of(data));
+
+        StubApiClient stub = new StubApiClient(response);
+        FlagManager manager = new FlagManager(stub, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger())
+            .withDefaults(new DefaultsCollection().set("feature", "fallback"));
+
+        manager.single("feature");
+
+        assertEquals("feature", stub.lastReportedKey);
+        assertEquals("fallback", stub.lastDefaultValue);
+    }
+
     private static RulesResponse emptyRules() {
         RulesResponse response = new RulesResponse();
         response.setVersion("1");
