@@ -1,5 +1,7 @@
 package com.zenmanage.sdk.flags;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zenmanage.sdk.api.ApiClient;
 import com.zenmanage.sdk.cache.InMemoryCache;
 import com.zenmanage.sdk.config.Logger;
@@ -144,6 +146,73 @@ class FlagManagerTest {
 
         assertEquals("feature", stub.lastReportedKey);
         assertEquals("fallback", stub.lastDefaultValue);
+    }
+
+    @Test
+    void unknownFlagTypeInWirePayloadDoesNotBreakOtherFlagsAndFallsBackToDefault() throws Exception {
+        // Simulates a rules payload from the CDN that already includes a flag type this
+        // SDK release does not know about (e.g. a future "json" flag type), mixed in with
+        // ordinary boolean/string/number flags. The whole document must still parse, the
+        // known flags must still evaluate normally, and looking up the unknown-typed flag
+        // must behave like a missing flag rather than throwing.
+        String json = "{"
+            + "\"version\":\"1\","
+            + "\"flags\":["
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"boolean\",\"key\":\"bool-flag\",\"name\":\"bool-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"boolean\":true}}},\"rules\":[]"
+            + "  },"
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"string\",\"key\":\"string-flag\",\"name\":\"string-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"string\":\"control\"}}},\"rules\":[]"
+            + "  },"
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"number\",\"key\":\"number-flag\",\"name\":\"number-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"number\":42}}},\"rules\":[]"
+            + "  },"
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-flag\",\"name\":\"json-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"json\":{\"nested\":true}}}},\"rules\":[]"
+            + "  }"
+            + "]"
+            + "}";
+
+        RulesResponse response = assertDoesNotThrow(() -> parseRules(json));
+
+        FlagManager manager = new FlagManager(new StubApiClient(response), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        assertEquals(true, manager.single("bool-flag", false).getValue());
+        assertEquals("control", manager.single("string-flag", "fallback").getValue());
+        assertEquals(42.0, manager.single("number-flag", 0).getValue());
+
+        Flag jsonFlag = assertDoesNotThrow(() -> manager.single("json-flag", "caller-default"));
+        assertEquals("caller-default", jsonFlag.getValue());
+    }
+
+    @Test
+    void unknownFlagTypeWithoutCallerDefaultThrowsLikeMissingFlag() throws Exception {
+        String json = "{"
+            + "\"version\":\"1\","
+            + "\"flags\":["
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-flag\",\"name\":\"json-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"json\":{\"nested\":true}}}},\"rules\":[]"
+            + "  }"
+            + "]"
+            + "}";
+
+        RulesResponse response = parseRules(json);
+        FlagManager manager = new FlagManager(new StubApiClient(response), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        assertThrows(EvaluationException.class, () -> manager.single("json-flag"));
+    }
+
+    private static RulesResponse parseRules(String json) throws Exception {
+        // Mirrors ApiClient's ObjectMapper configuration (FAIL_ON_UNKNOWN_PROPERTIES disabled)
+        // so this test exercises the same deserialization path as a real CDN response.
+        ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return objectMapper.readValue(json, RulesResponse.class);
     }
 
     private static RulesResponse emptyRules() {

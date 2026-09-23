@@ -80,7 +80,7 @@ public final class FlagManager {
         ensureRulesLoaded();
 
         for (Flag flag : sharedState.flags) {
-            if (flag.getKey().equals(key)) {
+            if (flag.getKey().equals(key) && flag.getType() != FlagType.UNKNOWN) {
                 reportUsage(key, usageContext(), resolveEffectiveDefault(key, defaultValue));
                 return evaluateFlag(flag);
             }
@@ -174,6 +174,11 @@ public final class FlagManager {
     private List<Flag> toFlags(List<FlagData> flagDataList) {
         List<Flag> result = new ArrayList<>();
         for (FlagData data : flagDataList) {
+            if (data.getType() == FlagType.UNKNOWN) {
+                logger.warn("Flag \"" + data.getKey() + "\" has an unrecognized type and will be"
+                    + " treated as missing; upgrade this SDK to evaluate it. Lookups will fall back"
+                    + " to the caller-provided default.");
+            }
             result.add(Flag.fromData(data));
         }
         return result;
