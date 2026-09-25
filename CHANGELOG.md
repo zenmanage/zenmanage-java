@@ -27,6 +27,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Filesystem cache serialization stability for tests
 - `FlagManager.single()` now reports the effective default value (inline parameter, falling back to a `DefaultsCollection` entry) on every usage report, including when the flag is found and evaluated normally, not just on fallback paths
 - `FlagType.fromWireValue()` no longer throws on an unrecognized wire value (e.g. a future flag type such as `json`). It now resolves to an `UNKNOWN` sentinel that `FlagManager` treats like a missing flag, falling back to the caller-provided default instead of throwing or dropping the entire rules payload. A warning is logged once per rules load when this occurs.
+- (ZEN-1755) `Flag.asBool()` now returns `true` for every non-boolean-typed flag regardless of the underlying value (a `json` flag, a `number` flag set to `0`, or a `string` flag set to `""`/`"false"`), matching the documented cross-SDK coercion contract. Previously it fell through to `Boolean.parseBoolean(String.valueOf(value))` (or a numeric zero-check for `number` flags), which returned `false` in these cases.
+- (ZEN-1757) `FlagManager.single()` now falls back to the caller-provided default (inline parameter or `DefaultsCollection` entry) when the rules fetch fails outright (e.g. an unreachable API or an invalid/unauthorized environment key), instead of letting the fetch exception propagate out of `single()` even when a default was supplied.
 
 ### Security
 - N/A

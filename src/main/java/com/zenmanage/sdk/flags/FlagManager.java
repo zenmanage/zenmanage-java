@@ -79,9 +79,9 @@ public final class FlagManager {
     }
 
     public Flag single(String key, Object defaultValue) {
-        ensureRulesLoaded();
+        List<Flag> flags = loadFlagsOrFallBackToDefaults();
 
-        for (Flag flag : sharedState.flags) {
+        for (Flag flag : flags) {
             if (flag.getKey().equals(key) && flag.getType() != FlagType.UNKNOWN) {
                 reportUsage(key, usageContext(), resolveEffectiveDefault(key, defaultValue));
                 return evaluateFlag(flag);
@@ -100,6 +100,21 @@ public final class FlagManager {
         }
 
         throw new EvaluationException("Flag not found: " + key);
+    }
+
+    /**
+     * Load the current flag set, falling back to an empty list (so callers fall
+     * through to their own default handling) if rule-loading fails outright — e.g.
+     * an unreachable API or an invalid/unauthorized environment key.
+     */
+    private List<Flag> loadFlagsOrFallBackToDefaults() {
+        try {
+            ensureRulesLoaded();
+            return sharedState.flags == null ? List.of() : sharedState.flags;
+        } catch (RuntimeException exception) {
+            logger.warn("Failed to load rules, falling back to configured defaults: " + exception.getMessage());
+            return List.of();
+        }
     }
 
     public FlagManager withContext(Context newContext) {

@@ -9,6 +9,7 @@ import com.zenmanage.sdk.config.Logger;
 import com.zenmanage.sdk.context.Attribute;
 import com.zenmanage.sdk.context.Context;
 import com.zenmanage.sdk.errors.EvaluationException;
+import com.zenmanage.sdk.errors.FetchRulesException;
 import com.zenmanage.sdk.rules.RuleEngine;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +35,35 @@ class FlagManagerTest {
     void throwsWhenFlagMissingAndNoDefault() {
         FlagManager manager = new FlagManager(new StubApiClient(emptyRules()), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
         assertThrows(EvaluationException.class, () -> manager.single("missing"));
+    }
+
+    @Test
+    void singleFallsBackToInlineDefaultWhenRulesFetchFails() {
+        // ZEN-1757: an unreachable/invalid environment key (e.g. a 401) must not
+        // propagate out of single() when the caller supplied a default.
+        FlagManager manager = new FlagManager(
+            new ThrowingApiClient(), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        Flag flag = assertDoesNotThrow(() -> manager.single("new-feature", true));
+        assertEquals(true, flag.getValue());
+    }
+
+    @Test
+    void singleFallsBackToDefaultsCollectionWhenRulesFetchFails() {
+        FlagManager manager = new FlagManager(
+                new ThrowingApiClient(), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger())
+            .withDefaults(new DefaultsCollection().set("new-feature", "fallback"));
+
+        Flag flag = assertDoesNotThrow(() -> manager.single("new-feature"));
+        assertEquals("fallback", flag.getValue());
+    }
+
+    @Test
+    void singleStillThrowsWhenRulesFetchFailsAndNoDefaultProvided() {
+        FlagManager manager = new FlagManager(
+            new ThrowingApiClient(), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        assertThrows(EvaluationException.class, () -> manager.single("new-feature"));
     }
 
     @Test
@@ -329,6 +359,17 @@ class FlagManagerTest {
         public void reportUsage(String key, Context context, Object defaultValue) {
             lastReportedKey = key;
             lastDefaultValue = defaultValue;
+        }
+    }
+
+    private static final class ThrowingApiClient extends ApiClient {
+        private ThrowingApiClient() {
+            super("srv_test", "https://example.com", new TestLogger(), false, "0.1.0", "zenmanage-java");
+        }
+
+        @Override
+        public RulesResponse getRules() {
+            throw new FetchRulesException("CDN request failed with status 401", 401);
         }
     }
 
