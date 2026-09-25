@@ -15,6 +15,7 @@ public enum FlagType {
     BOOLEAN("boolean"),
     STRING("string"),
     NUMBER("number"),
+    JSON("json"),
     UNKNOWN("unknown");
 
     private final String wireValue;

@@ -12,6 +12,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Example scripts matching PHP/JavaScript SDK example set
 - Test suite and JaCoCo reporting
 - CI and release workflows for public publishing
+- `json` flag type support: `FlagType.JSON`, a `json` value wrapper on `RawFlagValue`, and a `Flag.asJson()` accessor returning a Jackson `JsonNode` (both JSON objects and JSON arrays decode correctly; `MissingNode.getInstance()` is returned as the safe fallback for non-`json` flags). `FlagManager.createFlagFromDefault()` now types a `Map`/`List`/`JsonNode` default value as `json` instead of coercing it to a string.
 
 ### Changed
 - Renamed `X-API-Key`, `X-ZENMANAGE-CONTEXT`, and `X-DEFAULT-VALUE` headers to `X-ZEN-API-KEY`, `X-ZEN-CONTEXT`, and `X-ZEN-DEFAULT-VALUE` for consistency with the JavaScript/PHP SDKs

@@ -1,6 +1,7 @@
 package com.zenmanage.sdk.flags;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zenmanage.sdk.api.ApiClient;
 import com.zenmanage.sdk.cache.InMemoryCache;
@@ -12,11 +13,13 @@ import com.zenmanage.sdk.rules.RuleEngine;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlagManagerTest {
     @Test
@@ -151,10 +154,11 @@ class FlagManagerTest {
     @Test
     void unknownFlagTypeInWirePayloadDoesNotBreakOtherFlagsAndFallsBackToDefault() throws Exception {
         // Simulates a rules payload from the CDN that already includes a flag type this
-        // SDK release does not know about (e.g. a future "json" flag type), mixed in with
-        // ordinary boolean/string/number flags. The whole document must still parse, the
-        // known flags must still evaluate normally, and looking up the unknown-typed flag
-        // must behave like a missing flag rather than throwing.
+        // SDK release does not know about (e.g. a type added on the platform after this
+        // SDK shipped), mixed in with ordinary boolean/string/number/json flags. The whole
+        // document must still parse, the known flags must still evaluate normally, and
+        // looking up the unknown-typed flag must behave like a missing flag rather than
+        // throwing.
         String json = "{"
             + "\"version\":\"1\","
             + "\"flags\":["
@@ -173,6 +177,10 @@ class FlagManagerTest {
             + "  {"
             + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-flag\",\"name\":\"json-flag\","
             + "    \"target\":{\"value\":{\"value\":{\"json\":{\"nested\":true}}}},\"rules\":[]"
+            + "  },"
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"future-type\",\"key\":\"future-flag\",\"name\":\"future-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"future-type\":\"whatever\"}}},\"rules\":[]"
             + "  }"
             + "]"
             + "}";
@@ -184,9 +192,10 @@ class FlagManagerTest {
         assertEquals(true, manager.single("bool-flag", false).getValue());
         assertEquals("control", manager.single("string-flag", "fallback").getValue());
         assertEquals(42.0, manager.single("number-flag", 0).getValue());
+        assertEquals(true, manager.single("json-flag", Map.of()).asJson().get("nested").asBoolean());
 
-        Flag jsonFlag = assertDoesNotThrow(() -> manager.single("json-flag", "caller-default"));
-        assertEquals("caller-default", jsonFlag.getValue());
+        Flag futureFlag = assertDoesNotThrow(() -> manager.single("future-flag", "caller-default"));
+        assertEquals("caller-default", futureFlag.getValue());
     }
 
     @Test
@@ -195,8 +204,8 @@ class FlagManagerTest {
             + "\"version\":\"1\","
             + "\"flags\":["
             + "  {"
-            + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-flag\",\"name\":\"json-flag\","
-            + "    \"target\":{\"value\":{\"value\":{\"json\":{\"nested\":true}}}},\"rules\":[]"
+            + "    \"version\":\"1\",\"type\":\"future-type\",\"key\":\"future-flag\",\"name\":\"future-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"future-type\":\"whatever\"}}},\"rules\":[]"
             + "  }"
             + "]"
             + "}";
@@ -204,7 +213,66 @@ class FlagManagerTest {
         RulesResponse response = parseRules(json);
         FlagManager manager = new FlagManager(new StubApiClient(response), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
 
-        assertThrows(EvaluationException.class, () -> manager.single("json-flag"));
+        assertThrows(EvaluationException.class, () -> manager.single("future-flag"));
+    }
+
+    @Test
+    void jsonFlagFromWirePayloadDecodesObjectAndArrayValues() throws Exception {
+        String json = "{"
+            + "\"version\":\"1\","
+            + "\"flags\":["
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-object-flag\",\"name\":\"json-object-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"json\":{\"mode\":\"dark\",\"limit\":5}}}},\"rules\":[]"
+            + "  },"
+            + "  {"
+            + "    \"version\":\"1\",\"type\":\"json\",\"key\":\"json-array-flag\",\"name\":\"json-array-flag\","
+            + "    \"target\":{\"value\":{\"value\":{\"json\":[1,2,3]}}},\"rules\":[]"
+            + "  }"
+            + "]"
+            + "}";
+
+        RulesResponse response = parseRules(json);
+        FlagManager manager = new FlagManager(new StubApiClient(response), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        JsonNode objectValue = manager.single("json-object-flag").asJson();
+        assertTrue(objectValue.isObject());
+        assertEquals("dark", objectValue.get("mode").asText());
+        assertEquals(5, objectValue.get("limit").asInt());
+
+        JsonNode arrayValue = manager.single("json-array-flag").asJson();
+        assertTrue(arrayValue.isArray());
+        assertEquals(3, arrayValue.size());
+        assertEquals(2, arrayValue.get(1).asInt());
+    }
+
+    @Test
+    void mapDefaultValueIsTypedAsJsonNotStringified() {
+        StubApiClient stub = new StubApiClient(emptyRules());
+        FlagManager manager = new FlagManager(stub, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        Map<String, Object> defaultValue = Map.of("mode", "light", "accent", "#4f46e5");
+        Flag flag = manager.single("theme-config", defaultValue);
+
+        assertEquals(FlagType.JSON, flag.getType());
+        assertEquals("light", flag.asJson().get("mode").asText());
+        assertEquals("#4f46e5", flag.asJson().get("accent").asText());
+        // The default must be typed json, not coerced into a string wrapper.
+        assertEquals("", flag.asString());
+    }
+
+    @Test
+    void listDefaultValueIsTypedAsJsonNotStringified() {
+        StubApiClient stub = new StubApiClient(emptyRules());
+        FlagManager manager = new FlagManager(stub, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        Flag flag = manager.single("rollout-plan", List.of("phase-1", "phase-2"));
+
+        assertEquals(FlagType.JSON, flag.getType());
+        JsonNode value = flag.asJson();
+        assertTrue(value.isArray());
+        assertEquals("phase-1", value.get(0).asText());
+        assertEquals("phase-2", value.get(1).asText());
     }
 
     private static RulesResponse parseRules(String json) throws Exception {

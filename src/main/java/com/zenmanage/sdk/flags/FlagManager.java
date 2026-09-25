@@ -1,6 +1,7 @@
 package com.zenmanage.sdk.flags;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zenmanage.sdk.api.ApiClient;
 import com.zenmanage.sdk.cache.Cache;
@@ -11,6 +12,7 @@ import com.zenmanage.sdk.rollout.RolloutBucketer;
 import com.zenmanage.sdk.rules.RuleEngine;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -235,6 +237,8 @@ public final class FlagManager {
             type = FlagType.BOOLEAN;
         } else if (defaultValue instanceof Number) {
             type = FlagType.NUMBER;
+        } else if (defaultValue instanceof Map || defaultValue instanceof List || defaultValue instanceof JsonNode) {
+            type = FlagType.JSON;
         } else {
             type = FlagType.STRING;
         }

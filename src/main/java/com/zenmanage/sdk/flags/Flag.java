@@ -1,5 +1,7 @@
 package com.zenmanage.sdk.flags;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import java.util.List;
 
 /**
@@ -114,6 +116,24 @@ public final class Flag {
         } catch (NumberFormatException exception) {
             return 0.0;
         }
+    }
+
+    /**
+     * Get the flag value as a decoded JSON node.
+     *
+     * <p>Only recognizes the {@code json} value wrapper — a boolean/string/number flag
+     * (or a json flag whose wrapper is missing/malformed) safely falls back to
+     * {@link MissingNode#getInstance()} rather than attempting a lossy conversion.
+     * Both JSON objects and JSON arrays decode to their natural {@link JsonNode}
+     * subtype ({@code ObjectNode}/{@code ArrayNode}), so both are handled uniformly.</p>
+     */
+    public JsonNode asJson() {
+        if (target == null || target.getValue() == null || target.getValue().getValue() == null) {
+            return MissingNode.getInstance();
+        }
+
+        JsonNode value = target.getValue().getValue().getJsonValue();
+        return value == null ? MissingNode.getInstance() : value;
     }
 
     public Object getValue() {
