@@ -83,17 +83,28 @@ public final class Flag {
         return (value instanceof Boolean) && (Boolean) value;
     }
 
+    /**
+     * Get the flag value as a boolean.
+     *
+     * <p>Per the cross-SDK coercion contract (mirroring the reference PHP SDK), this
+     * returns the underlying value only for a {@code boolean}-typed flag. For every
+     * other recognized wrapper ({@code string}/{@code number}/{@code json}) it returns
+     * {@code true} unconditionally — regardless of the underlying value, including a
+     * {@code number} flag set to {@code 0} or a {@code string} flag set to {@code ""} —
+     * since a present non-boolean wrapper is always "truthy". It only returns
+     * {@code false} for a non-boolean type when there is no value wrapper at all.</p>
+     */
     public boolean asBool() {
-        Object value = getValue();
-        if (value instanceof Boolean) {
-            return (Boolean) value;
+        RawFlagValue raw = rawValue();
+        if (raw == null) {
+            return false;
         }
 
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue() != 0.0;
+        if (raw.getBooleanValue() != null) {
+            return raw.getBooleanValue();
         }
 
-        return Boolean.parseBoolean(String.valueOf(value));
+        return raw.getStringValue() != null || raw.getNumberValue() != null || raw.getJsonValue() != null;
     }
 
     public String asString() {
@@ -128,19 +139,29 @@ public final class Flag {
      * subtype ({@code ObjectNode}/{@code ArrayNode}), so both are handled uniformly.</p>
      */
     public JsonNode asJson() {
-        if (target == null || target.getValue() == null || target.getValue().getValue() == null) {
+        RawFlagValue raw = rawValue();
+        if (raw == null) {
             return MissingNode.getInstance();
         }
 
-        JsonNode value = target.getValue().getValue().getJsonValue();
+        JsonNode value = raw.getJsonValue();
         return value == null ? MissingNode.getInstance() : value;
     }
 
     public Object getValue() {
+        RawFlagValue raw = rawValue();
+        return raw == null ? "" : raw.toJavaValue();
+    }
+
+    /**
+     * Return the wire-level value wrapper for this flag's target, or {@code null} if
+     * the flag has no value at all (missing target/value chain).
+     */
+    private RawFlagValue rawValue() {
         if (target == null || target.getValue() == null || target.getValue().getValue() == null) {
-            return "";
+            return null;
         }
 
-        return target.getValue().getValue().toJavaValue();
+        return target.getValue().getValue();
     }
 }

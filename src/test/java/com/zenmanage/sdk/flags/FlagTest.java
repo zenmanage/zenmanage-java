@@ -48,6 +48,79 @@ class FlagTest {
     }
 
     @Test
+    void asBoolReturnsTrueForJsonFlagRegardlessOfValue() throws Exception {
+        // ZEN-1755: asBool() must return true for every non-boolean type, regardless
+        // of the underlying value, per the cross-SDK coercion contract.
+        JsonNode node = new ObjectMapper().readTree("{\"mode\":\"dark\"}");
+
+        RawFlagValue raw = new RawFlagValue();
+        raw.setJsonValue(node);
+
+        TargetValue value = new TargetValue();
+        value.setValue(raw);
+
+        FlagTarget target = new FlagTarget();
+        target.setValue(value);
+
+        Flag flag = new Flag("1", FlagType.JSON, "flag", "flag", target, List.of(), null);
+
+        assertTrue(flag.asBool());
+    }
+
+    @Test
+    void asBoolReturnsTrueForNumberFlagEvenWhenValueIsZero() {
+        RawFlagValue raw = new RawFlagValue();
+        raw.setNumberValue(0.0);
+
+        TargetValue value = new TargetValue();
+        value.setValue(raw);
+
+        FlagTarget target = new FlagTarget();
+        target.setValue(value);
+
+        Flag flag = new Flag("1", FlagType.NUMBER, "flag", "flag", target, List.of(), null);
+
+        assertTrue(flag.asBool());
+    }
+
+    @Test
+    void asBoolReturnsTrueForStringFlagEvenWhenValueIsEmptyOrFalse() {
+        RawFlagValue emptyStringRaw = new RawFlagValue();
+        emptyStringRaw.setStringValue("");
+        TargetValue emptyStringValue = new TargetValue();
+        emptyStringValue.setValue(emptyStringRaw);
+        FlagTarget emptyStringTarget = new FlagTarget();
+        emptyStringTarget.setValue(emptyStringValue);
+        Flag emptyStringFlag = new Flag("1", FlagType.STRING, "flag", "flag", emptyStringTarget, List.of(), null);
+        assertTrue(emptyStringFlag.asBool());
+
+        RawFlagValue falseStringRaw = new RawFlagValue();
+        falseStringRaw.setStringValue("false");
+        TargetValue falseStringValue = new TargetValue();
+        falseStringValue.setValue(falseStringRaw);
+        FlagTarget falseStringTarget = new FlagTarget();
+        falseStringTarget.setValue(falseStringValue);
+        Flag falseStringFlag = new Flag("1", FlagType.STRING, "flag", "flag", falseStringTarget, List.of(), null);
+        assertTrue(falseStringFlag.asBool());
+    }
+
+    @Test
+    void asBoolReturnsFalseForBooleanFlagSetToFalse() {
+        RawFlagValue raw = new RawFlagValue();
+        raw.setBooleanValue(false);
+
+        TargetValue value = new TargetValue();
+        value.setValue(raw);
+
+        FlagTarget target = new FlagTarget();
+        target.setValue(value);
+
+        Flag flag = new Flag("1", FlagType.BOOLEAN, "flag", "flag", target, List.of(), null);
+
+        assertFalse(flag.asBool());
+    }
+
+    @Test
     void asJsonDecodesJsonObjectValue() throws Exception {
         JsonNode node = new ObjectMapper().readTree("{\"mode\":\"dark\",\"limit\":5}");
 
