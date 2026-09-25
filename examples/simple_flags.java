@@ -4,6 +4,7 @@ import com.zenmanage.sdk.config.ConfigBuilder;
 import com.zenmanage.sdk.flags.Flag;
 
 import java.util.List;
+import java.util.Map;
 
 public final class simple_flags {
     public static void main(String[] args) {
@@ -21,6 +22,9 @@ public final class simple_flags {
 
         Flag numberFlag = zenmanage.flags().single("example-number-flag", 42);
         System.out.println("Number flag: " + numberFlag.asNumber());
+
+        Flag jsonFlag = zenmanage.flags().single("example-json-flag", Map.of("mode", "light"));
+        System.out.println("JSON flag: " + jsonFlag.asJson());
 
         List<Flag> all = zenmanage.flags().all();
         System.out.println("Total flags loaded: " + all.size());

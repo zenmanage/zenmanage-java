@@ -57,6 +57,24 @@ String variant = zenmanage.flags().single("checkout-flow", "control").asString()
 double timeout = zenmanage.flags().single("api-timeout", 5000).asNumber();
 ```
 
+### JSON Configuration
+
+```java
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
+import java.util.Map;
+
+// Structured configuration values (JSON objects and JSON arrays both decode
+// to a Jackson JsonNode — ObjectNode/ArrayNode respectively)
+JsonNode theme = zenmanage.flags()
+    .single("theme-config", Map.of("mode", "light", "accent", "#4f46e5"))
+    .asJson();
+
+JsonNode rolloutPlan = zenmanage.flags()
+    .single("rollout-plan", List.of())
+    .asJson();
+```
+
 ### Context-Based Evaluation
 
 ```java
@@ -160,6 +178,23 @@ Supported environment variables:
 - `ZENMANAGE_CACHE_DIR`
 - `ZENMANAGE_ENABLE_USAGE_REPORTING`
 - `ZENMANAGE_API_ENDPOINT`
+
+## Value Types & Cross-Type Coercion
+
+A flag's `type` is one of `boolean`, `string`, `number`, or `json`. Each type has a matching accessor (`asBool()`, `asString()`, `asNumber()`, `asJson()`), plus `isEnabled()` for boolean flags specifically.
+
+**`asJson()`** returns the decoded value as a Jackson `JsonNode`. Both JSON objects (`{"a": 1}`) and JSON arrays (`[1, 2, 3]`) decode to their natural `JsonNode` subtype (`ObjectNode`/`ArrayNode` respectively) — the SDK never forces one shape onto the other. Calling it on a non-`json` flag, or on a `json` flag whose value is missing or malformed, returns `MissingNode.getInstance()` rather than `null` or a thrown exception, so it is always safe to call further `JsonNode` methods (`.isObject()`, `.isArray()`, `.get(...)`, `.size()`, etc.) on the result.
+
+**`asJson()` only recognizes the flag's own `{"json": …}` value wrapper.** For every other flag type it falls back to the safe `MissingNode.getInstance()` sentinel instead of attempting a conversion — it never guesses at turning a boolean/string/number into JSON. `asBool()`, `asString()`, and `asNumber()` predate `json` support and take a different, best-effort approach for a "foreign" type: they parse or stringify the underlying value rather than returning a fixed placeholder. The full picture, calling each accessor against each flag type:
+
+| Called on →<br>Flag type ↓ | `asBool()` | `asString()` | `asNumber()` | `asJson()` |
+|---|---|---|---|---|
+| `boolean` | the bool | stringified bool (`"true"`/`"false"`) | `1` or `0` | `MissingNode.getInstance()` |
+| `string` | `true` only if the string equals `"true"` (case-insensitive), else `false` | the string | the string parsed as a number, or `0` if it isn't numeric | `MissingNode.getInstance()` |
+| `number` | `true` unless the number is `0` | stringified number | the number | `MissingNode.getInstance()` |
+| `json` | `false` | `""` | `0` | the decoded `JsonNode` |
+
+**Default values** passed to `single(key, default)` or `DefaultsCollection` are typed from the Java value itself: a `Map<String, Object>` or `List<?>` default becomes a `json`-typed synthesized flag (not a stringified fallback), so `asJson()` on a missing flag with a `Map`/`List` default returns that structure decoded back into a `JsonNode`. A `com.fasterxml.jackson.databind.JsonNode` passed directly as a default is also accepted and typed as `json`.
 
 ## Caching Backends
 
