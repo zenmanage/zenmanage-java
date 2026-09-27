@@ -13,9 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # README advertises Java 11+ support (the pom's compiler release target);
+        # README advertises Java 17+ support (the pom's compiler release target —
+        # the optional Spring Boot auto-configuration pulls in Spring Boot 3.x,
+        # which requires 17 as its own floor, so 11 cannot compile this module);
         # 21 is the LTS this repo recommends for local build/test with JaCoCo.
-        java-version: [ '11', '17', '21' ]
+        java-version: [ '17', '21' ]
 
     steps:
       - name: Checkout

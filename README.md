@@ -15,7 +15,7 @@ Add feature flags to your Java application in minutes. Control feature rollouts,
 
 ## Requirements
 
-- Java 11+
+- Java 17+ (Spring Boot 3.x, used by the optional Spring Boot auto-configuration, requires 17 as its own floor)
 - Maven 3.9+ (for build/test)
 
 For local build/test with JaCoCo in this repository, Java 21 is recommended.

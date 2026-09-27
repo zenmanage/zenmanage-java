@@ -36,7 +36,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Changed
 - Renamed `X-API-Key`, `X-ZENMANAGE-CONTEXT`, and `X-DEFAULT-VALUE` headers to `X-ZEN-API-KEY`, `X-ZEN-CONTEXT`, and `X-ZEN-DEFAULT-VALUE` for consistency with the JavaScript/PHP SDKs
-- CI now builds/tests across a Java 11/17/21 matrix instead of only 21, actually verifying the Java 11+ support this SDK advertises
+- Minimum supported Java version raised from 11 to 17 (`pom.xml`'s `maven.compiler.release`/README requirements) — this module bundles the optional Spring Boot auto-configuration, which pulls in Spring Boot 3.x, and Spring Boot 3.x requires Java 17 as its own floor. The module never actually compiled on 11 (its `spring-boot-configuration-processor` annotation processor can't be loaded by a JDK 11 `javac`); this corrects the previously-inaccurate advertised floor to match reality.
+- CI now builds/tests across a Java 17/21 matrix instead of only 21
 - Maven Central publishing switched from the retired Sonatype OSSRH host/`nexus-staging-maven-plugin` to the Central Publisher Portal via `central-publishing-maven-plugin`
 
 ### Deprecated
