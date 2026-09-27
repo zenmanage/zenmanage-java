@@ -15,8 +15,8 @@ Before publishing anywhere:
    - `mvn clean verify`
    - code coverage gates
 3. Tag a release candidate in Git:
-   - `git tag v0.1.0`
-   - `git push origin v0.1.0`
+   - `git tag v1.0.0`
+   - `git push origin v1.0.0`
 4. Prepare release notes/changelog.
 
 ## 2. Publish to Maven Central (Central Publisher Portal)
@@ -105,11 +105,11 @@ JitPack builds directly from Git tags.
 2. Create and push a version tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-3. Visit `https://jitpack.io/#zenmanage/zenmanage-java/v0.1.0` to trigger and verify the build.
+3. Visit `https://jitpack.io/#zenmanage/zenmanage-java/v1.0.0` to trigger and verify the build.
 4. Add JitPack badge and dependency snippet to README.
 
 ## 5. CI/CD Automation Recommendations

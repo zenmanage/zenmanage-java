@@ -25,7 +25,7 @@ For local build/test with JaCoCo in this repository, Java 21 is recommended.
 <dependency>
   <groupId>com.zenmanage</groupId>
   <artifactId>zenmanage-java</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
