@@ -53,10 +53,10 @@ jobs:
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: >-
           mvn -B -P release
           -DskipTests
-          -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
           deploy
 
       - name: Publish to GitHub Packages
