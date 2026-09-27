@@ -67,6 +67,49 @@ class FlagManagerTest {
     }
 
     @Test
+    void singleFallsBackToInlineDefaultWhenRulesLoadingThrowsAnUnexpectedNonSdkException() {
+        // The rules-loading path must degrade to configured defaults for ANY failure,
+        // not just the SDK's own ZenmanageException hierarchy — a surprise bug (e.g. an
+        // NPE) must not crash the host application either.
+        FlagManager manager = new FlagManager(
+            new UnexpectedlyThrowingApiClient(), new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        Flag flag = assertDoesNotThrow(() -> manager.single("new-feature", true));
+        assertEquals(true, flag.getValue());
+    }
+
+    @Test
+    void siblingInstancesShareLoadedRulesWithoutRefetching() {
+        // Regression test: withContext()/withDefaults() hand out sibling FlagManager
+        // instances that share one SharedState. Before the ZEN-406 thread-safety fix,
+        // each sibling synchronized on its own instance monitor, so this assertion
+        // would not have been reliably true under concurrent access — this test locks
+        // in that the *state itself* (not just locking) is genuinely shared: the first
+        // instance's load must be visible to a sibling without a second API call.
+        CountingApiClient apiClient = new CountingApiClient(rulesWith(baseBooleanFlagData("shared-flag", true)));
+        FlagManager manager = new FlagManager(apiClient, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        Flag first = manager.single("shared-flag", false);
+        Flag second = manager.withContext(Context.single("user", "u-1")).single("shared-flag", false);
+
+        assertEquals(true, first.getValue());
+        assertEquals(true, second.getValue());
+        assertEquals(1, apiClient.callCount());
+    }
+
+    @Test
+    void refreshRulesForcesAReloadEvenWhenAlreadyLoaded() {
+        CountingApiClient apiClient = new CountingApiClient(rulesWith(baseBooleanFlagData("flag", true)));
+        FlagManager manager = new FlagManager(apiClient, new InMemoryCache(), new RuleEngine(), 3600, new TestLogger());
+
+        manager.single("flag", false);
+        assertEquals(1, apiClient.callCount());
+
+        manager.refreshRules();
+        assertEquals(2, apiClient.callCount());
+    }
+
+    @Test
     void evaluatesRuleAgainstContext() {
         FlagData data = baseBooleanFlagData("premium-feature", false);
 
@@ -320,6 +363,13 @@ class FlagManagerTest {
         return response;
     }
 
+    private static RulesResponse rulesWith(FlagData... flags) {
+        RulesResponse response = new RulesResponse();
+        response.setVersion("1");
+        response.setFlags(List.of(flags));
+        return response;
+    }
+
     private static FlagData baseBooleanFlagData(String key, boolean value) {
         RawFlagValue raw = new RawFlagValue();
         raw.setBooleanValue(value);
@@ -370,6 +420,37 @@ class FlagManagerTest {
         @Override
         public RulesResponse getRules() {
             throw new FetchRulesException("CDN request failed with status 401", 401);
+        }
+    }
+
+    private static final class UnexpectedlyThrowingApiClient extends ApiClient {
+        private UnexpectedlyThrowingApiClient() {
+            super("srv_test", "https://example.com", new TestLogger(), false, "0.1.0", "zenmanage-java");
+        }
+
+        @Override
+        public RulesResponse getRules() {
+            throw new NullPointerException("simulated unexpected bug, not a ZenmanageException");
+        }
+    }
+
+    private static final class CountingApiClient extends ApiClient {
+        private final RulesResponse response;
+        private int callCount;
+
+        private CountingApiClient(RulesResponse response) {
+            super("srv_test", "https://example.com", new TestLogger(), false, "0.1.0", "zenmanage-java");
+            this.response = response;
+        }
+
+        @Override
+        public RulesResponse getRules() {
+            callCount++;
+            return response;
+        }
+
+        int callCount() {
+            return callCount;
         }
     }
 
