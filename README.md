@@ -228,19 +228,3 @@ Coverage report output:
 
 - `target/site/jacoco/index.html`
 
-## Publishing
-
-See [PUBLISHING_NEXT_STEPS.md](PUBLISHING_NEXT_STEPS.md) for a step-by-step checklist to publish to Maven Central, GitHub Packages, and JitPack.
-
-## CI/CD
-
-- CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-- Release workflow (tag-triggered): [.github/workflows/release.yml](.github/workflows/release.yml)
-
-Release workflow expects repository secrets:
-
-- `CENTRAL_PORTAL_USERNAME` / `CENTRAL_PORTAL_PASSWORD` — a user token pair generated at
-  [central.sonatype.com](https://central.sonatype.com/account) (not a Sonatype account
-  password)
-- `GPG_PRIVATE_KEY`
-- `GPG_PASSPHRASE`
