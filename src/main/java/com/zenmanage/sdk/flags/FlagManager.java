@@ -8,6 +8,7 @@ import com.zenmanage.sdk.cache.Cache;
 import com.zenmanage.sdk.config.Logger;
 import com.zenmanage.sdk.context.Context;
 import com.zenmanage.sdk.errors.EvaluationException;
+import com.zenmanage.sdk.errors.ZenmanageException;
 import com.zenmanage.sdk.rollout.RolloutBucketer;
 import com.zenmanage.sdk.rules.RuleEngine;
 import java.util.ArrayList;
@@ -111,7 +112,7 @@ public final class FlagManager {
         try {
             ensureRulesLoaded();
             return sharedState.flags == null ? List.of() : sharedState.flags;
-        } catch (RuntimeException exception) {
+        } catch (ZenmanageException exception) {
             logger.warn("Failed to load rules, falling back to configured defaults: " + exception.getMessage());
             return List.of();
         }
@@ -135,7 +136,9 @@ public final class FlagManager {
 
     public void refreshRules() {
         logger.info("Refreshing rules from API");
-        loadRulesFromApi();
+        synchronized (sharedState) {
+            loadRulesFromApi();
+        }
     }
 
     private Object resolveEffectiveDefault(String key, Object defaultValue) {
@@ -156,25 +159,30 @@ public final class FlagManager {
         return context;
     }
 
-    private synchronized void ensureRulesLoaded() {
-        if (sharedState.flags != null) {
-            return;
-        }
-
-        Optional<String> cached = cache.get(CACHE_KEY);
-        if (cached.isPresent()) {
-            try {
-                RulesResponse cachedResponse = objectMapper.readValue(cached.get(), RulesResponse.class);
-                if (cachedResponse != null && cachedResponse.getFlags() != null) {
-                    sharedState.flags = toFlags(cachedResponse.getFlags());
-                    return;
-                }
-            } catch (JsonProcessingException exception) {
-                logger.warn("Failed to parse cached rules");
+    // Synchronizes on sharedState itself, not the FlagManager instance monitor: withContext()/
+    // withDefaults() hand out sibling FlagManager instances that all share the same SharedState,
+    // so locking on "this" would let two sibling instances race on sharedState.flags concurrently.
+    private void ensureRulesLoaded() {
+        synchronized (sharedState) {
+            if (sharedState.flags != null) {
+                return;
             }
-        }
 
-        loadRulesFromApi();
+            Optional<String> cached = cache.get(CACHE_KEY);
+            if (cached.isPresent()) {
+                try {
+                    RulesResponse cachedResponse = objectMapper.readValue(cached.get(), RulesResponse.class);
+                    if (cachedResponse != null && cachedResponse.getFlags() != null) {
+                        sharedState.flags = toFlags(cachedResponse.getFlags());
+                        return;
+                    }
+                } catch (JsonProcessingException exception) {
+                    logger.warn("Failed to parse cached rules");
+                }
+            }
+
+            loadRulesFromApi();
+        }
     }
 
     private void loadRulesFromApi() {
@@ -268,6 +276,6 @@ public final class FlagManager {
     }
 
     private static final class SharedState {
-        private List<Flag> flags;
+        private volatile List<Flag> flags;
     }
 }

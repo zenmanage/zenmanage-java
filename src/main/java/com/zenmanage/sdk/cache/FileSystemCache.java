@@ -84,8 +84,8 @@ public final class FileSystemCache implements Cache {
             return;
         }
 
-        try {
-            Files.list(cacheDirectory)
+        try (var paths = Files.list(cacheDirectory)) {
+            paths
                 .filter(path -> path.getFileName().toString().endsWith(".json"))
                 .forEach(path -> {
                     try {

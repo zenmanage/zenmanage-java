@@ -107,26 +107,30 @@ public final class Flag {
         return raw.getStringValue() != null || raw.getNumberValue() != null || raw.getJsonValue() != null;
     }
 
+    /**
+     * Get the flag value as a string.
+     *
+     * <p>Per the cross-SDK coercion contract, this only recognizes the {@code string}
+     * value wrapper — a boolean/number/json flag never gets stringified, it falls back
+     * to {@code ""} the same safe-zero-value way {@link #asNumber()} and {@link #asJson()}
+     * do for a type that isn't their own.</p>
+     */
     public String asString() {
-        Object value = getValue();
-        return value == null ? "" : String.valueOf(value);
+        RawFlagValue raw = rawValue();
+        return raw == null || raw.getStringValue() == null ? "" : raw.getStringValue();
     }
 
+    /**
+     * Get the flag value as a number.
+     *
+     * <p>Per the cross-SDK coercion contract, this only recognizes the {@code number}
+     * value wrapper — a boolean/string/json flag never gets parsed, it falls back to
+     * {@code 0} the same safe-zero-value way {@link #asString()} and {@link #asJson()}
+     * do for a type that isn't their own.</p>
+     */
     public double asNumber() {
-        Object value = getValue();
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue();
-        }
-
-        if (value instanceof Boolean) {
-            return (Boolean) value ? 1.0 : 0.0;
-        }
-
-        try {
-            return Double.parseDouble(String.valueOf(value));
-        } catch (NumberFormatException exception) {
-            return 0.0;
-        }
+        RawFlagValue raw = rawValue();
+        return raw == null || raw.getNumberValue() == null ? 0.0 : raw.getNumberValue();
     }
 
     /**

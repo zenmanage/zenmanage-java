@@ -34,16 +34,18 @@
         <tag>HEAD</tag>
     </scm>
 
+    <!--
+        Sonatype sunset the legacy OSSRH host (s01.oss.sonatype.org) in favor of the
+        Central Publisher Portal (central.sonatype.com). Releases are no longer deployed
+        via a <repository> here at all — the central-publishing-maven-plugin in the
+        "release" profile below bundles and uploads them directly through the Portal's
+        publishing API. Only snapshots still use a plain Maven distributionManagement.
+    -->
     <distributionManagement>
-        <repository>
-            <id>ossrh</id>
-            <name>Sonatype OSSRH</name>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
         <snapshotRepository>
-            <id>ossrh</id>
-            <name>Sonatype OSSRH Snapshots</name>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+            <id>central</id>
+            <name>Central Portal Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 
@@ -255,14 +257,13 @@
                     </plugin>
 
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.7.0</version>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
                         </configuration>
                     </plugin>
                 </plugins>
