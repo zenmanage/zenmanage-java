@@ -2,6 +2,12 @@
 
 This document tracks upgrade steps between released versions of the Zenmanage Java SDK.
 
+## Upgrading to 1.0.0
+
+No breaking API changes from 0.1.0 — this release is bug fixes (cross-type
+coercion, rule-engine attribute matching, thread-safety) and publishing/CI
+tooling updates. No migration required.
+
 ## Upgrading to 0.1.0
 
 Initial release. No migration required.

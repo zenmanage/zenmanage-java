@@ -21,7 +21,7 @@ public final class ConfigBuilder {
     private String apiEndpoint = DEFAULT_API_ENDPOINT;
     private Logger logger;
     private Cache customCache;
-    private String sdkVersion = "0.1.0";
+    private String sdkVersion = "1.0.0";
     private String clientAgent = "zenmanage-java";
 
     private ConfigBuilder() {

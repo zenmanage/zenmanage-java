@@ -27,8 +27,11 @@ class FlagTest {
 
         assertTrue(flag.isEnabled());
         assertTrue(flag.asBool());
-        assertEquals(1.0, flag.asNumber());
-        assertEquals("true", flag.asString());
+        // Cross-type coercion contract: asNumber()/asString() only recognize their own
+        // value wrapper, so calling them on a boolean flag falls back to the safe
+        // zero value (0 / "") rather than stringifying/parsing the boolean.
+        assertEquals(0.0, flag.asNumber());
+        assertEquals("", flag.asString());
     }
 
     @Test

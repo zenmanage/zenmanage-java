@@ -1,6 +1,7 @@
 # Zenmanage Java SDK
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.zenmanage/zenmanage-java.svg)](https://search.maven.org/search?q=g:com.zenmanage%20AND%20a:zenmanage-java)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/da4331a5841c4e21b425a4f741340d9f)](https://app.codacy.com/gh/zenmanage/zenmanage-java/dashboard)
 
 Add feature flags to your Java application in minutes. Control feature rollouts, run A/B tests, and manage runtime configuration without redeploying.
 
@@ -14,7 +15,7 @@ Add feature flags to your Java application in minutes. Control feature rollouts,
 
 ## Requirements
 
-- Java 11+
+- Java 17+ (Spring Boot 3.x, used by the optional Spring Boot auto-configuration, requires 17 as its own floor)
 - Maven 3.9+ (for build/test)
 
 For local build/test with JaCoCo in this repository, Java 21 is recommended.
@@ -25,7 +26,7 @@ For local build/test with JaCoCo in this repository, Java 21 is recommended.
 <dependency>
   <groupId>com.zenmanage</groupId>
   <artifactId>zenmanage-java</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -185,14 +186,16 @@ A flag's `type` is one of `boolean`, `string`, `number`, or `json`. Each type ha
 
 **`asJson()`** returns the decoded value as a Jackson `JsonNode`. Both JSON objects (`{"a": 1}`) and JSON arrays (`[1, 2, 3]`) decode to their natural `JsonNode` subtype (`ObjectNode`/`ArrayNode` respectively) — the SDK never forces one shape onto the other. Calling it on a non-`json` flag, or on a `json` flag whose value is missing or malformed, returns `MissingNode.getInstance()` rather than `null` or a thrown exception, so it is always safe to call further `JsonNode` methods (`.isObject()`, `.isArray()`, `.get(...)`, `.size()`, etc.) on the result.
 
-**`asJson()` only recognizes the flag's own `{"json": …}` value wrapper.** For every other flag type it falls back to the safe `MissingNode.getInstance()` sentinel instead of attempting a conversion — it never guesses at turning a boolean/string/number into JSON. `asBool()`, `asString()`, and `asNumber()` predate `json` support and take a different, best-effort approach for a "foreign" type: they parse or stringify the underlying value rather than returning a fixed placeholder. The full picture, calling each accessor against each flag type:
+**Calling the "wrong" accessor for a flag's type never throws.** This is the reference contract other Zenmanage SDKs mirror (from `zenmanage-php`'s README), so the rules below are intentionally exact — not just "reasonable defaults." Each accessor only recognizes its own value wrapper (`{"boolean": …}`, `{"string": …}`, `{"number": …}`, `{"json": …}`) and falls back to a safe zero value for every other type — it never attempts a lossy conversion between types (no stringifying a boolean, no parsing a string as a number):
 
 | Called on →<br>Flag type ↓ | `asBool()` | `asString()` | `asNumber()` | `asJson()` |
 |---|---|---|---|---|
-| `boolean` | the bool | stringified bool (`"true"`/`"false"`) | `1` or `0` | `MissingNode.getInstance()` |
-| `string` | `true` only if the string equals `"true"` (case-insensitive), else `false` | the string | the string parsed as a number, or `0` if it isn't numeric | `MissingNode.getInstance()` |
-| `number` | `true` unless the number is `0` | stringified number | the number | `MissingNode.getInstance()` |
-| `json` | `false` | `""` | `0` | the decoded `JsonNode` |
+| `boolean` | the bool | `""` | `0` | `MissingNode.getInstance()` |
+| `string` | `true` | the string | `0` | `MissingNode.getInstance()` |
+| `number` | `true` | `""` | the number | `MissingNode.getInstance()` |
+| `json` | `true` | `""` | `0` | the decoded `JsonNode` |
+
+**`asBool()` returns `true` for every non-boolean type, regardless of the underlying value** (including a `number` flag set to `0`, or a `string` flag set to `""`) — the value is wrapped in a non-`null` value object, and only the absence of any wrapper at all makes it `false`. Use `isEnabled()`, not `asBool()`, when you specifically mean "is this boolean flag on" — `isEnabled()` returns `false` outright for any non-boolean flag instead.
 
 **Default values** passed to `single(key, default)` or `DefaultsCollection` are typed from the Java value itself: a `Map<String, Object>` or `List<?>` default becomes a `json`-typed synthesized flag (not a stringified fallback), so `asJson()` on a missing flag with a `Map`/`List` default returns that structure decoded back into a `JsonNode`. A `com.fasterxml.jackson.databind.JsonNode` passed directly as a default is also accepted and typed as `json`.
 
@@ -226,18 +229,3 @@ Coverage report output:
 
 - `target/site/jacoco/index.html`
 
-## Publishing
-
-See [PUBLISHING_NEXT_STEPS.md](PUBLISHING_NEXT_STEPS.md) for a step-by-step checklist to publish to Maven Central, GitHub Packages, and JitPack.
-
-## CI/CD
-
-- CI workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-- Release workflow (tag-triggered): [.github/workflows/release.yml](.github/workflows/release.yml)
-
-Release workflow expects repository secrets:
-
-- `SONATYPE_USERNAME`
-- `SONATYPE_PASSWORD`
-- `GPG_PRIVATE_KEY`
-- `GPG_PASSPHRASE`

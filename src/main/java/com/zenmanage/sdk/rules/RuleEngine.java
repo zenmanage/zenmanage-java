@@ -46,9 +46,10 @@ public final class RuleEngine {
 
         Attribute attribute = context.getAttribute(clause.getAttribute());
         if (attribute == null) {
-            String op = clause.getOperator();
-            return "isnull".equals(op) || "notequal".equals(op) || "notin".equals(op)
-                || "notcontains".equals(op) || "notstartswith".equals(op) || "notendswith".equals(op);
+            // Matches the reference SDK (zenmanage-php): an attribute the context doesn't
+            // carry at all never matches any operator, negated or not, including isnull —
+            // isnull only matches a *present* attribute whose values are empty strings.
+            return false;
         }
 
         List<String> attributeValues = attribute.getValues();

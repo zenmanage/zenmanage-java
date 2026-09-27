@@ -172,8 +172,11 @@ class RuleEngineTest {
     }
 
     @Test
-    void isNullMatchesWhenAttributeIsAbsent() {
-        assertNotNull(engine.evaluate(List.of(rule("tag", "isnull", null)), Context.single("user", "u-1")));
+    void isNullDoesNotMatchWhenAttributeIsAbsent() {
+        // Matches the reference SDK: an attribute missing from the context entirely never
+        // matches any operator, including isnull — isnull only matches a *present*
+        // attribute whose values are empty strings (see isNullMatchesWhenAttributeValueIsEmpty).
+        assertNull(engine.evaluate(List.of(rule("tag", "isnull", null)), Context.single("user", "u-1")));
     }
 
     @Test
@@ -197,11 +200,14 @@ class RuleEngineTest {
     }
 
     @Test
-    void negativeOperatorsMatchWhenAttributeIsAbsent() {
+    void negativeOperatorsDoNotMatchWhenAttributeIsAbsent() {
+        // Matches the reference SDK (zenmanage-php's AttributeConditionEvaluator): an
+        // attribute the context doesn't carry at all never matches any operator, negated
+        // or not — "notcontains" etc. only evaluate once the attribute is present.
         Context context = Context.single("user", "u-1");
         for (String op : new String[]{"notequal", "notin", "notcontains", "notstartswith", "notendswith"}) {
-            assertNotNull(engine.evaluate(List.of(rule("missing", op, "x")), context),
-                op + " should match when attribute is absent");
+            assertNull(engine.evaluate(List.of(rule("missing", op, "x")), context),
+                op + " should not match when attribute is absent");
         }
     }
 

@@ -105,13 +105,18 @@ public final class FlagManager {
     /**
      * Load the current flag set, falling back to an empty list (so callers fall
      * through to their own default handling) if rule-loading fails outright — e.g.
-     * an unreachable API or an invalid/unauthorized environment key.
+     * an unreachable API, an invalid/unauthorized environment key, or an unexpected
+     * bug in the loading/parsing path. Deliberately catches every {@link Exception},
+     * not just the SDK's own {@code ZenmanageException} hierarchy: this SDK's core
+     * value proposition is that a broken or unreachable API never crashes the host
+     * application, so any failure here — expected or not — degrades to configured
+     * defaults rather than propagating.
      */
     private List<Flag> loadFlagsOrFallBackToDefaults() {
         try {
             ensureRulesLoaded();
             return sharedState.flags == null ? List.of() : sharedState.flags;
-        } catch (RuntimeException exception) {
+        } catch (Exception exception) {
             logger.warn("Failed to load rules, falling back to configured defaults: " + exception.getMessage());
             return List.of();
         }
@@ -156,7 +161,21 @@ public final class FlagManager {
         return context;
     }
 
-    private synchronized void ensureRulesLoaded() {
+    // sharedState.flags is volatile, so this fast path (the common case once rules are
+    // loaded) never touches the lock at all — cheap for every flag lookup. withContext()/
+    // withDefaults() hand out sibling FlagManager instances that all share the same
+    // SharedState, so synchronized blocks below lock on sharedState itself, not the
+    // FlagManager instance monitor ("this") — otherwise two sibling instances could race
+    // on sharedState.flags with no real mutual exclusion between them.
+    //
+    // Neither this method nor loadRulesFromApi() holds the lock during the cache read or
+    // the network call: a slow/unresponsive API must never block concurrent flag lookups
+    // (on this thread or any other FlagManager instance sharing this SharedState) for as
+    // long as that call takes. The lock only ever guards the final assignment. The
+    // tradeoff is that concurrent first-loads on a cold cache may each fetch once (a
+    // bounded, self-resolving "thundering herd") rather than serializing behind one
+    // caller's round-trip.
+    private void ensureRulesLoaded() {
         if (sharedState.flags != null) {
             return;
         }
@@ -166,7 +185,7 @@ public final class FlagManager {
             try {
                 RulesResponse cachedResponse = objectMapper.readValue(cached.get(), RulesResponse.class);
                 if (cachedResponse != null && cachedResponse.getFlags() != null) {
-                    sharedState.flags = toFlags(cachedResponse.getFlags());
+                    setFlagsIfAbsent(toFlags(cachedResponse.getFlags()));
                     return;
                 }
             } catch (JsonProcessingException exception) {
@@ -174,17 +193,34 @@ public final class FlagManager {
             }
         }
 
-        loadRulesFromApi();
+        if (sharedState.flags == null) {
+            loadRulesFromApi();
+        }
     }
 
+    // apiClient.getRules() guarantees a non-null response with a non-null getFlags()
+    // list on every normal return — it throws InvalidRulesException itself otherwise —
+    // so no redundant null-check is needed here.
     private void loadRulesFromApi() {
         RulesResponse response = apiClient.getRules();
-        sharedState.flags = toFlags(response.getFlags());
+        List<Flag> flags = toFlags(response.getFlags());
+
+        synchronized (sharedState) {
+            sharedState.flags = flags;
+        }
 
         try {
             cache.set(CACHE_KEY, objectMapper.writeValueAsString(response), cacheTtlSeconds);
         } catch (JsonProcessingException exception) {
             logger.warn("Failed to serialize rules for cache");
+        }
+    }
+
+    private void setFlagsIfAbsent(List<Flag> flags) {
+        synchronized (sharedState) {
+            if (sharedState.flags == null) {
+                sharedState.flags = flags;
+            }
         }
     }
 
@@ -268,6 +304,6 @@ public final class FlagManager {
     }
 
     private static final class SharedState {
-        private List<Flag> flags;
+        private volatile List<Flag> flags;
     }
 }
