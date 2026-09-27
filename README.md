@@ -1,6 +1,7 @@
 # Zenmanage Java SDK
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.zenmanage/zenmanage-java.svg)](https://search.maven.org/search?q=g:com.zenmanage%20AND%20a:zenmanage-java)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/da4331a5841c4e21b425a4f741340d9f)](https://app.codacy.com/gh/zenmanage/zenmanage-java/dashboard)
 
 Add feature flags to your Java application in minutes. Control feature rollouts, run A/B tests, and manage runtime configuration without redeploying.
 
