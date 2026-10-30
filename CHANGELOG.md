@@ -10,7 +10,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - N/A
 
 ### Changed
-- N/A
+- Added Dependabot version updates for Maven dependencies and GitHub Actions (weekly).
 
 ### Deprecated
 - N/A
