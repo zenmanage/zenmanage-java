@@ -10,7 +10,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - N/A
 
 ### Changed
-- Added Dependabot version updates for Maven dependencies and GitHub Actions (weekly).
+- N/A
 
 ### Deprecated
 - N/A
@@ -23,6 +23,12 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Security
 - N/A
+
+## [1.1.0] - 2026-10-30
+
+### Changed
+- Added Dependabot version updates for Maven dependencies and GitHub Actions (weekly).
+- Upgraded Spring Boot from 3.3.5 to 4.1.2. The Spring Boot dependencies (`spring-boot-autoconfigure` and `spring-boot-configuration-processor`) are optional, so they only affect apps that also use Spring Boot. Spring Boot 4 still requires Java 17+.
 
 ## [1.0.0] - 2026-09-27
 
