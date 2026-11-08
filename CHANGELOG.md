@@ -6,15 +6,11 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
-### Changed
-
-- Pinned GitHub Actions to commit SHAs. No SDK behavior changes.
-
 ### Added
 - N/A
 
 ### Changed
-- N/A
+- Pinned GitHub Actions to commit SHAs. No SDK behavior changes.
 
 ### Deprecated
 - N/A
