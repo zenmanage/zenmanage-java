@@ -10,7 +10,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - N/A
 
 ### Changed
-- Pinned GitHub Actions to commit SHAs. No SDK behavior changes.
+- N/A
 
 ### Deprecated
 - N/A
@@ -23,6 +23,12 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Security
 - N/A
+
+## [1.1.1] - 2026-11-21
+
+### Changed
+- Updated Jackson from 2.22.4 to 2.23.0. No SDK API changes.
+- Pinned GitHub Actions to commit SHAs. No SDK behavior changes.
 
 ## [1.1.0] - 2026-10-30
 
